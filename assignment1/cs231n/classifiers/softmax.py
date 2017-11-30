@@ -30,11 +30,30 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  train_num = X.shape[0]
+  for i in range(train_num):
+    s = X[i] @ W
+    prob = np.exp(s)
+    prob/=np.sum(prob)
+    loss_sample = -np.log(prob[y[i]])
+    loss+=loss_sample
+    
+    for j in range(W.shape[1]):
+      if j == y[i]:
+        dW[:,j] += (prob[j]-1)*X[i]
+        continue   
+      dW[:,j] += prob[j]*X[i]
+
+
+  loss/=train_num
+  dW/=train_num
+
+  # regulariazation
+  loss += reg*np.sum(W*W)
+  dW +=  2*reg * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
-
   return loss, dW
 
 
@@ -54,7 +73,21 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  s = X @ W
+  s_exp = np.exp(s)
+  s_exp_sum = np.sum(s_exp,axis=1)
+  prob = s_exp/s_exp_sum.reshape((X.shape[0],1))
+  cross_entropy = -np.log(prob[np.arange(X.shape[0]),y])
+  loss = np.mean(cross_entropy)
+
+  weight_m = prob
+  weight_m[np.arange(X.shape[0]),y] = weight_m[np.arange(X.shape[0]),y]-1
+  dW = X.T @ weight_m/X.shape[0]
+
+  # regulariazation
+  reg_loss = reg*np.sum(W*W)
+  loss += reg_loss
+  dW +=  2*reg * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
