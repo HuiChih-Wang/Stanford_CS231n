@@ -401,18 +401,29 @@ def conv_forward_naive(x, w, b, conv_param):
     
     N,C,W,F = x.shape
     F,C,HH,WW = w.shape
+    HH_half = int(HH/2)
+    WW_half = int(WW/2)
+
     # pad image with zero
     stride, pad_size = conv_param['stride'], conv_param['pad']
-    print(stride, pad_size)
     x_pad = np.pad(x,((0, 0),(0,0),(pad_size,pad_size),(pad_size,pad_size)),'constant')
-    print(x.shape, x_pad.shape)
-    for i in range(N):
-    	for r in range(pad_size,H+pad_size,stride):
-	    	for c in range(pad_size,W+pad_size,stride):
-	    		for f in range(F):
-	    			x_patch = x[i,r-pad_size:r+pad_size,c-pad_size:c+pad_size,:]
-	
+    H_pad, W_pad = x_pad.shape[2:]
 
+    # convolution 
+    out_H = int((H_pad-HH)/stride + 1)
+    out_W = int((W_pad-WW)/stride + 1)
+    out = np.zeros((N,F,out_H,out_W))
+    for i in range(N):
+        start_r = 0
+        for r in range(out_H):
+            start_c = 0
+            for c in range(out_W):
+                x_patch  = x_pad[i,:,start_r:start_r+HH,start_c:start_c+WW]
+                for f in range(F):
+                    filt = w[f,:,:,:]
+                    out[i,f,r,c] = np.sum(x_patch * filt) + b[f]
+                start_c+=stride
+            start_r+=stride
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
