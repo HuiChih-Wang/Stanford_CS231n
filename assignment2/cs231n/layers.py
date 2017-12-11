@@ -176,13 +176,16 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         sample_mean = np.mean(x, axis = 0)
         sample_var = np.var(x, axis = 0)
+        x_mu = x - sample_mean  
+        
+
         x_bn = (x - sample_mean[np.newaxis,:])/(np.sqrt(sample_var[np.newaxis,:]+eps))
         out = gamma[np.newaxis,:] * x_bn + beta[np.newaxis,:]
-        cache = x
-
-
+        
         running_mean = momentum * running_mean + (1 - momentum) * sample_mean
         running_var = momentum * running_var + (1 - momentum) * sample_var
+
+        cache = (x, x_bn,sample_mean,sample_var,gamma,beta)
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -195,7 +198,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #######################################################################
         x_bn = (x - running_mean)/(np.sqrt(running_var+eps))
         out  = gamma[np.newaxis,:] * x_bn + beta[np.newaxis,:]
-        cache = x
+        
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -231,7 +234,28 @@ def batchnorm_backward(dout, cache):
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
-    pass
+    x, x_bn,sample_mean,sample_var, gamma, beta = cache
+    x_mu = x - sample_mean
+
+    dgamma = np.sum(x_bn * dout, axis=0)
+    dbeta = np.sum(dout, axis = 0)
+    dx_bn = dout * gamma[np.newaxis,:]
+    
+    sample_std = np.sqrt(sample_var+1e-5)
+    dx_mu = dx_bn/sample_std[np.newaxis,:]
+
+    dinv_std = np.sum(dx_bn * x_mu,axis = 0)
+    dstd = -dinv_std / (sample_var+1e-5)
+
+    dvar = 0.5 /sample_std * dstd
+    dx_var = 2 /x_mu.shape[0] * dvar[np.newaxis,:] * x_mu  
+
+
+    dx_1 = dx_mu + dx_var
+    dmu = -np.sum(dx_1,axis = 0)
+    dx_2 = np.ones(x_mu.shape)*dmu/x_mu.shape[0]
+    dx = dx_1 + dx_2
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -300,7 +324,9 @@ def dropout_forward(x, dropout_param):
         # TODO: Implement training phase forward pass for inverted dropout.   #
         # Store the dropout mask in the mask variable.                        #
         #######################################################################
-        pass
+        mask = np.random.rand(*x.shape) < p
+        mask = mask.astype(float)/p 
+        out = x * mask
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -308,7 +334,7 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # TODO: Implement the test phase forward pass for inverted dropout.   #
         #######################################################################
-        pass
+        out = x
         #######################################################################
         #                            END OF YOUR CODE                         #
         #######################################################################
@@ -335,7 +361,7 @@ def dropout_backward(dout, cache):
         #######################################################################
         # TODO: Implement training phase backward pass for inverted dropout   #
         #######################################################################
-        pass
+        dx = dout * mask
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
