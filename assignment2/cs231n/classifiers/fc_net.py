@@ -86,7 +86,7 @@ class TwoLayerNet(object):
         b2 = self.params['b2']
 
         first_out_relu, first_cache = affine_relu_forward(X,W1,b1)
-        second_out_relu, second_cache = affine_relu_forward(first_out_relu,W2,b2)
+        second_out_relu, second_cache = affine_forward(first_out_relu,W2,b2)
         scores = second_out_relu
         
         ############################################################################
@@ -115,7 +115,7 @@ class TwoLayerNet(object):
         loss += reg_loss
 
         # grad
-        dfirst,dw2,db2 = affine_relu_backward(dprob,second_cache)
+        dfirst,dw2,db2 = affine_backward(dprob,second_cache)
         dx,dw1,db1 = affine_relu_backward(dfirst,first_cache)
         grads['W1'] = dw1 + self.reg*W1
         grads['W2'] = dw2 + self.reg*W2
@@ -254,7 +254,12 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers):
             W = self.params['W'+str(i+1)]
             b = self.params['b'+str(i+1)]
-            output_data,cache = affine_relu_forward(input_data,W,b)
+            
+            if i == self.num_layers-1:
+                output_data,cache = affine_forward(input_data,W,b)
+            else:
+                output_data,cache = affine_relu_forward(input_data,W,b)
+            
             cache_list.append(cache)
             w_sum += np.sum(W*W)
             input_data = output_data
@@ -288,7 +293,10 @@ class FullyConnectedNet(object):
 
         #  grad
         for i in range(self.num_layers-1,-1,-1):
-            dout,dw,db = affine_relu_backward(dout,cache_list[i])
+            if i == self.num_layers-1:
+                dout,dw,db = affine_backward(dout,cache_list[i])
+            else:
+                dout,dw,db = affine_relu_backward(dout,cache_list[i])
             grads['W'+str(i+1)] = dw + self.reg*self.params['W'+str(i+1)]
             grads['b'+str(i+1)] = db
         ############################################################################
