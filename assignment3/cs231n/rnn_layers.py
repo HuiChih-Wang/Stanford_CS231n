@@ -183,7 +183,12 @@ def word_embedding_forward(x, W):
     #                                                                            #
     # HINT: This can be done in one line using NumPy's array indexing.           #
     ##############################################################################
-    pass
+    out = np.empty((x.shape[0],x.shape[1],W.shape[1]))
+    for i in range(x.shape[0]):
+    	for j in range(x.shape[1]):
+    		out[i,j,:] = W[x[i,j]]
+
+    cache = (x,W)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -205,14 +210,17 @@ def word_embedding_backward(dout, cache):
     Returns:
     - dW: Gradient of word embedding matrix, of shape (V, D).
     """
-    dW = None
     ##############################################################################
     # TODO: Implement the backward pass for word embeddings.                     #
     #                                                                            #
     # Note that Words can appear more than once in a sequence.                   #
     # HINT: Look up the function np.add.at                                       #
     ##############################################################################
-    pass
+    x,W = cache
+    dW = np.zeros(W.shape)
+    for i in range(x.shape[0]):
+        for j in range(x.shape[1]):
+            dW[x[i,j],:] += dout[i,j,:]
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
