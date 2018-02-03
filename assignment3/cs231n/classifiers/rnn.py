@@ -231,7 +231,30 @@ class CaptioningRNN(object):
         # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
         # a loop.                                                                 #
         ###########################################################################
-        pass
+        # get initial state
+        prev_h = features @ W_proj + b_proj
+
+        # initial word
+        captions[:,0] = self._start
+
+        for word_idx in range(max_length):
+            # word embedding
+            out, _ = word_embedding_forward(captions,W_embed)
+            x = out[:,word_idx,:]
+
+            # rnn forward
+            next_h, _ = rnn_step_forward(x, prev_h, Wx, Wh, b)
+
+            # get score
+            scores = next_h @ W_vocab + b_vocab
+
+            # select word with highest score
+            candidate = np.argmax(scores, axis = 1)
+            captions[:,word_idx] = candidate
+
+            # update prev_h
+            prev_h = next_h
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
