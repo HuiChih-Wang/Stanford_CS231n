@@ -266,7 +266,18 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     # TODO: Implement the forward pass for a single timestep of an LSTM.        #
     # You may want to use the numerically stable sigmoid implementation above.  #
     #############################################################################
-    pass
+    H = prev_h.shape[1]
+    state = x @ Wx + prev_h @ Wh + b
+    in_gate = sigmoid(state[:, :H])
+    forget_gate = sigmoid(state[:, H:2*H])
+    out_gate = sigmoid(state[:,2*H:3*H])
+    gate_gate = np.tanh(state[:, 3*H:4*H])
+
+    next_c = forget_gate * prev_c + in_gate * gate_gate
+    out_c = np.tanh(next_c)
+    next_h = out_gate * out_c
+
+    cache = (out_c, out_gate, forget_gate, prev_c, in_gate, gate_gate, x, prev_h, Wx, Wh)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -298,11 +309,31 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     # HINT: For sigmoid and tanh you can compute local derivatives in terms of  #
     # the output value from the nonlinearity.                                   #
     #############################################################################
-    pass
+    out_c, out_gate, forget_gate, prev_c, in_gate, gate_gate, x, prev_h, Wx, Wh = cache
+
+    dout_gate = dnext_h * out_c
+    dout_c = dnext_h * out_gate
+    dnext_c += (dout_c*(1 - out_c**2))
+    dforget_gate = dnext_c * prev_c
+    dprev_c = dnext_c * forget_gate
+    din_gate = dnext_c * gate_gate
+    dgate_gate = dnext_c * in_gate
+
+    dgate_gate *= (1-gate_gate ** 2)
+    din_gate *= ((1-in_gate) * in_gate)
+    dforget_gate *= ((1-forget_gate) * forget_gate)
+    dout_gate *= ((1-out_gate) * out_gate)
+
+    dW = np.hstack((din_gate,dforget_gate,dout_gate,dgate_gate))
+    dWx = x.T @ dW
+    dWh = prev_h.T @ dW
+    db = np.sum(dW, axis = 0)
+
+    dx = dW @ Wx.T
+    dprev_h = dW @ Wh.T
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
-
     return dx, dprev_h, dprev_c, dWx, dWh, db
 
 
@@ -333,11 +364,20 @@ def lstm_forward(x, h0, Wx, Wh, b):
     # TODO: Implement the forward pass for an LSTM over an entire timeseries.   #
     # You should use the lstm_step_forward function that you just defined.      #
     #############################################################################
-    pass
+    prev_h = h0
+    prev_c = np.zeros_like(h0)
+    h = np.empty((x.shape[0],x.shape[1],h0.shape[1]))
+    cache = []
+    for i in range(x.shape[1]):
+        x_batch = x[:,i,:]
+        h_t, c_t, cache_t = lstm_step_forward(x_batch, prev_h, prev_c, Wx, Wh, b)
+        h[:,i,:] = h_t
+        prev_h = h_t
+        prev_c = c_t
+        cache.append(cache_t)
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
-
     return h, cache
 
 
@@ -361,7 +401,26 @@ def lstm_backward(dh, cache):
     # TODO: Implement the backward pass for an LSTM over an entire timeseries.  #
     # You should use the lstm_step_backward function that you just defined.     #
     #############################################################################
-    pass
+    D = cache[0][6].shape[1]
+    N,T,H = dh.shape
+    dx = np.empty((N,T,D))
+    dWx = np.zeros((D,4*H))
+    dWh = np.zeros((H,4*H))
+    db = np.zeros((4*H,))
+    dprev_h = np.zeros((N,H))
+    dprev_c = np.zeros((N,H))
+
+    for i in range(T-1,-1,-1):
+        dnext_h = dh[:,i,:] + dprev_h
+        cache_t = cache[i]
+        dx_t, dprev_h, dprev_c, dWx_t, dWh_t, db_t = lstm_step_backward(dnext_h,dprev_c,cache_t)
+        dx[:,i,:] = dx_t
+        # update gradient
+        dWx += dWx_t
+        dWh += dWh_t
+        db += db_t
+    # update dh0
+    dh0 = dprev_h
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
